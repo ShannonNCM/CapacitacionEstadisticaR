@@ -1,0 +1,20 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library("readxl")
+library("tidyverse")
+require("tidyverse")
+library("writexl")
+library("psych")
+
+library("nortest") ###REALIZA 5 PRUEBAS DE NORMALIDAD###
+library("moments") ###REALIZA 1 PRUEBA DE NORMALIDAD###
+
+library("psych")
+```
+
+
