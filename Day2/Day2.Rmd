@@ -15,6 +15,172 @@ library("nortest") ###REALIZA 5 PRUEBAS DE NORMALIDAD###
 library("moments") ###REALIZA 1 PRUEBA DE NORMALIDAD###
 
 library("psych")
+
+library("stargazer")
+library("memisc")
+library("caret")
+library("mfx")
 ```
+
+```{r}
+basedatos <- read_excel("PersonasConNegocios_ENIGH2022.xlsx")
+```
+
+________________________________________________________________________________
+REGRESIONES LINEALES
+
+```{r}
+modelo_1_salario <- lm(basedatos$B1P02B08 ~ basedatos$B1P02B06A)
+anova(modelo_1_salario)
+summary(modelo_1_salario)
+```
+
+
+Se va a bucar obtener un modelo para analizar el sueldo y como la edad determina el sueldo, la edad es la variable independiente y el salario la variable dependiente
+
+Aqui se quiere un modelo para el salario en funcion del nivel de escolaridad
+nivel educativo B1P00B07A
+
+
+```{r}
+#algo de as.numeric
+datatest <- basedatos %>% 
+  select(B1P00B07A,B1P02B08) %>%
+  mutate('niveleduc' = case_when(B1P00B07A=='Ninguno' ~ 1, B1P00B07A=='Primaria' ~ 2, B1P00B07A=='Basico' ~ 3, B1P00B07A=='Diversificado' ~ 4, B1P00B07A=='Superior' ~ 5,)) %>% 
+  mutate(nivel5 = case_when(B1P00B07A=='Superior' ~ 1, .default=0))
+#basedatos$Ingreso
+```
+
+```{r}
+plot(datatest$niveleduc,datatest$B1P02B08, xlab='Nivel educ', ylab='Salario', main="Grafica de puntos: Salario en funcion de nivel educ")
+```
+
+
+```{r}
+plot(datatest$nivel5,datatest$B1P02B08, xlab='Nivel educ', ylab='Salario', main="Grafica de puntos: Salario en funcion de nivel educ")
+```
+
+Tomando todos los niveles
+```{r}
+mod01 <- lm(datatest$B1P02B08 ~ datatest$niveleduc)
+anova(mod01)
+summary(mod01)
+```
+
+Solo para el nivel 5
+```{r}
+mod02 <- lm(datatest$B1P02B08 ~ datatest$nivel5)
+anova(mod02)
+summary(mod02)
+```
+si nos preguntamos cuanto mas gana el nivel 5 respecto a todos los demas niveles, serian 3243
+
+
+________________________________________________________________________________
+REGRESION MULTIPLE
+
+Se crea un nivel por cada variable
+El nivel 1 que era de menor importancia esta oculto en el intercepto
+En el ejemplo de este coso multiple la comparacion se hace respecto al nivel 1
+
+
+
+
+
+
+________________________________________________________________________________
+
+Cuando las variables dependientes no son continuas se tienen modelos no lineales, binarias o ficticias, 01
+se puede usar un modelo de regresion pero carece de interpretacion
+
+
+
+Se va a ver el salario con nivel educacional
+en estos casos se toma la mediana ya que la media es muy sensible a los valores extremos
+*** se usan salarios altos y bajos
+    alto > a la mediana
+    bajo < a la mediana
+modelos tobit -> variables cargadas a uno d elos dos lados
+
+```{r}
+#mediansalary <- 
+median(basedatos$B1P02B08)
+#highlowsalary <- function(x){
+ # mutate(salarioaltobajo = case_when(x >=  ~ 1, .default=0)
+#}
+```
+
+
+
+
+
+con logit y probit
+analizar genero por salario, edad (separando menores y mayores de edad), tamano de empresa (efectos agrupados y luego desagrupados, ie una unica variable que tenga los 5, y todas las variables posibles)
+
+
+
+
+# Sexo (mujeres) versus Edad, Salario, Tamaño de empresa (quiere decir que la variable que mayor interes aca son las mujeres)
+variable dpendiente: sexo
+sexo: B1P00A02 (mujer y hombre)
+edad: B1P00A03 (media y dividimos)
+salario: B1P02B08 (solo salario)
+tamano empresa: tiene que ver con el numero de empleados (con los tamanos de antes)
+
+
+```{r}
+#funcion para poner sexo a dos niveles
+fgenero <- function(x){
+  case_when(x == 'Mujeres' ~ 1, .default = 0)
+}
+#funcion para poner la edad
+meanage <- mean(base$B1P00A03)
+fage <- function(x){
+  case_when(x >= meanage ~ 1, .default = 0)
+}
+#tamano de empresa
+ftamano <- function(x){
+  case_when(x == '1 a 9' ~ 1, x == '10 a 99' ~ 2, x == '100 a 199' ~ 3, .default =  4)
+}
+```
+
+
+```{r}
+base <- basedatos %>% 
+  select(B1P00A02, B1P00A03, B1P02B08, Numero_Empleados) %>% 
+  mutate('genero' = fgenero(B1P00A02)) %>% 
+  mutate('edad' = fage(B1P00A03)) %>% 
+  mutate('salario' = B1P02B08) %>% 
+  mutate('tamano' = ftamano(Numero_Empleados))
+```
+
+
+sexo mujeres en funcion de la edad
+*** en la edad tengo dos niveles arriba y abajo de la media
+
+1. establecemos los niveles para la edad, usamos 2 para los mayore y menores a la media
+
+```{r}
+edadmenor <-
+```
+
+
+```{r}
+# Regresgión logit
+reg_logit = glm(salario_alto~ nivel_educacional_2+nivel_educacional_3+nivel_educacional_4+nivel_educacional_5, data=PersonasConNegocios_ENIGH2022, family=binomial(link='logit'))
+summary(reg_logit)
+precict_logit=predict(reg_logit, type='response')
+summary(precict_logit)
+estimaciones2 = reg_logit$fitted.values
+plot(estimaciones2,main="¿Datos estimados fuera de [0, 1]?", xlab="Individuo", ylab="Estimación de Partipación", col="blue",lwd=2)
+abline(a=1,b=0,col="red",lwd=2) # línea y=1
+abline(a=0,b=0,col="red",lwd=2) # línea y=0
+marginal_logit<-logitmfx(formula = salario_alto~ nivel_educacional_2+nivel_educacional_3+nivel_educacional_4+nivel_educacional_5,  data = PersonasConNegocios_ENIGH2022)
+print(marginal_logit)
+```
+
+
+
+
 
 
