@@ -1,0 +1,213 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library("readxl")
+library("tidyverse")
+require("tidyverse")
+library("writexl")
+library("psych")
+```
+
+
+```{r}
+basedatos <- read_excel("PersonasConNegocios_ENIGH2022.xlsx")
+```
+
+# B1P00A03	EDAD
+# B1P00A04A	DIA DE NACIMIENTO
+# B1P00A04B	MES DE NACIMIENTO
+# B1P02B06A	TIEMPO LABORANDO AÑOS
+# B1P02B06B	TIEMPO LABORANDO MESES
+# B1P02B24	GANANCIA NO AGROPECUARIA
+# B1P02B25	GANANCIA AGROPECUARIA
+# B1P02B28	HORAS TRABAJADAS
+# B1P02B08  Salario (pero quitando los NA)
+
+```{r}
+data <- basedatos %>% select(B1P00A03, B1P00A04A, B1P00A04B, B1P02B06A, B1P02B06B, B1P02B24, B1P02B25, B1P02B28, B1P02B08) %>% 
+  rename('edad' = B1P00A03, 'dianac' = B1P00A04A, 'mesnac' =  B1P00A04B, 'tiempolabanio' =  B1P02B06A, 'tiempolabmeses' =  B1P02B06B, 'ganancianoagrop' =  B1P02B24, 'gananciaagrop' =  B1P02B25, 'horastrabajadas' =  B1P02B28, 'salario' =  B1P02B08) %>% 
+  drop_na()
+```
+
+```{r}
+which(is.na(data), arr.ind=TRUE)
+```
+
+
+```{r}
+# Matriz de correlaciones
+cor(data)
+```
+
+***quitamos las variables que nos salieron NA
+```{r}
+dataclean <- data %>% 
+  select(edad, dianac, mesnac, tiempolabanio, tiempolabmeses, horastrabajadas, salario)
+```
+
+
+```{r}
+# Matriz de correlaciones
+cor(dataclean)
+```
+
+
+
+```{r}
+## Analisis de componentes principales
+#Datos transformados:
+dataclean.c <- scale(dataclean,center=TRUE,scale=TRUE)
+head(dataclean)
+head(dataclean.c)
+#data.c
+```
+
+```{r}
+# Seleccion de las variables
+X <- dataclean.c
+head(X)
+```
+
+```{r}
+# Matriz de varianzas y covarianzas:
+S <- var(X)
+S
+```
+
+```{r}
+traza_S <- sum(diag(S)) 
+traza_S
+```
+
+
+```{r}
+# Matriz de correlaciones:
+R <- cor(X) 
+R
+```
+
+
+# Analisis de Componentes Principales 
+# Datos Centrados y Reducidos
+
+```{r}
+# Matriz X′X, en Rp (proyectamos individuos):
+X.rp <- eigen(var(X))
+X1.val <- round(X.rp$values,4) 
+X1.val
+sum(X1.val)
+X1.vec <- round(X.rp$vectors,4) 
+X1.vec
+
+#aqui tenemos los valores propios mayores a 1
+```
+
+
+```{r}
+# Importancia de las componentes:
+Pro.Var <- round((X1.val/traza_S)*100,4) 
+Pro.Var
+Pro.Var.Cum <- round(cumsum(Pro.Var),4)
+Pro.Var.Cum
+
+#aqui me saca el porcentaje de cada coso y luego las sumas para poer ir evaluando cuales se van a tomar, entre 3 y 4
+```
+
+```{r}
+# Grafico para la seleccion del numero de componentes:
+plot(X1.val,type="b",
+     main="Grafico para la seleccion del numero de componentes", 
+     xlab="Numero de Componentes",ylab="Varianzas", pch=20,col="red",lwd=2)
+```
+
+```{r}
+# Proyeccion de los individuos:
+pci1 <- X%*%X1.vec[,1]
+pci2 <- X%*%X1.vec[,2]
+pci14 <- X%*%X1.vec[,1:4]
+```
+
+
+```{r}
+# Primera y segunda componente:
+plot(pci14[,1],pci14[,2], type="p",col="red",
+     pch=20,cex=2, xlim=c(-7,4),ylim=c(-20,10), 
+     main="Proyeccion de los Individuos", 
+     xlab="Primera componente (20.48%)",
+     ylab="Segunda componente (14.62%)")
+text(pci14[,1],pci14[,2],labels=rownames(X),pos=1,cex=0.5)
+abline(h=0,v=0)
+```
+
+
+```{r}
+# Correlaciones entre las variables y las componentes principales:
+
+CorVarPC <- diag(sqrt(X1.val))%*%X1.vec # en el caso de var. estandarizadas, magnitud 
+rownames(CorVarPC) <- colnames(X)
+colnames(CorVarPC) <- c("PC1","PC2","PC3","PC4","PC5", "PC6","PC7")
+CorVarPC
+#calcula en los vectores pripios, para formar el circulo de correlaciones, 
+```
+
+
+
+```{r}
+# Cırculo de correlaciones:
+
+t=seq(0,2*pi,l=100)
+plot(cos(t),sin(t),type="l",xlim=c(-1,1),ylim=c(-1,1), xlab="Primera componente (33%)",ylab="Segunda componente (17%)", main="Circulo de Correlaciones")
+
+abline(h=0,v=0,col="blue")
+
+abline(h=seq(-1,1,0.25),v=seq(-1,1,0.25),col="blue",lty=3)
+
+arrows(0,0,CorVarPC[1:7,1],CorVarPC[1:7,2],length=0.1)
+
+text(CorVarPC[,1],CorVarPC[,2],labels=colnames(X),pos=1,cex=0.8)
+```
+
+________________________________________________________________________________
+ANALISIS FACTORIAL
+
+# B1P00A09A	DSICAPACIDAD
+# B1P00A09B	DISCAPACIDAD
+# B1P00A09C	DISCAPACIDAD
+# B1P00A09D	DISCAPACIDAD
+# B1P00A09E	DISCAPACIDAD
+# B1P00A09F	DISCAPACIDAD
+
+```{r}
+#tamano de empresa
+ftamano <- function(x){
+  case_when(x == '1 a 9' ~ 1, x == '10 a 99' ~ 2, x == '100 a 199' ~ 3, .default =  4)
+}
+#funcion para sacar las columnas de discapacidad
+f
+
+```
+
+
+Vamos a preparar la base de datos
+```{r}
+basedatos %>% 
+  select(B1P00A03, B1P00A04A, B1P00A04B, B1P02B06A, B1P02B06B, B1P02B24, B1P02B25, B1P02B28, B1P02B08) %>% 
+  rename('edad' = B1P00A03, 'dianac' = B1P00A04A, 'mesnac' =  B1P00A04B, 'tiempolabanio' =  B1P02B06A, 'tiempolabmeses' =  B1P02B06B, 'ganancianoagrop' =  B1P02B24, 'gananciaagrop' =  B1P02B25, 'horastrabajadas' =  B1P02B28, 'salario' =  B1P02B08) %>% 
+  drop_na()
+```
+
+
+
+
+
+
+
+
+
+
+
+
