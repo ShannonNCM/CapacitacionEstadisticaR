@@ -10,21 +10,20 @@ library("tidyverse")
 require("tidyverse")
 library("writexl")
 library("psych")
-
-library("nortest") ###REALIZA 5 PRUEBAS DE NORMALIDAD###
-library("moments") ###REALIZA 1 PRUEBA DE NORMALIDAD###
-
-library("psych")
-
-library("stargazer")
-library("memisc")
-library("caret")
-library("mfx")
+library("dplyr")
+library("tibble")
+library("openxlsx")
 ```
+
+```{r}
+
+```
+
 
 ```{r}
 basedatos <- read_excel("PersonasConNegocios_ENIGH2022.xlsx")
 ```
+
 
 ________________________________________________________________________________
 REGRESIONES LINEALES
@@ -43,9 +42,7 @@ nivel educativo B1P00B07A
 
 
 ```{r}
-#algo de as.numeric
-datatest <- basedatos %>% 
-  select(B1P00B07A,B1P02B08) %>%
+datatest <- basedatos %>% select(B1P00B07A, B1P02B08) %>%
   mutate('niveleduc' = case_when(B1P00B07A=='Ninguno' ~ 1, B1P00B07A=='Primaria' ~ 2, B1P00B07A=='Basico' ~ 3, B1P00B07A=='Diversificado' ~ 4, B1P00B07A=='Superior' ~ 5,)) %>% 
   mutate(nivel5 = case_when(B1P00B07A=='Superior' ~ 1, .default=0))
 #basedatos$Ingreso
@@ -74,6 +71,21 @@ anova(mod02)
 summary(mod02)
 ```
 si nos preguntamos cuanto mas gana el nivel 5 respecto a todos los demas niveles, serian 3243
+
+
+
+```{r}
+library("nortest") ###REALIZA 5 PRUEBAS DE NORMALIDAD###
+library("moments") ###REALIZA 1 PRUEBA DE NORMALIDAD###
+
+library("psych")
+
+library("stargazer")
+library("memisc")
+library("caret")
+library("mfx")
+library("ggplot2")
+```
 
 
 ________________________________________________________________________________
@@ -134,7 +146,7 @@ fgenero <- function(x){
   case_when(x == 'Mujeres' ~ 1, .default = 0)
 }
 #funcion para poner la edad
-meanage <- mean(base$B1P00A03)
+meanage <- mean(basedatos$B1P00A03)
 fage <- function(x){
   case_when(x >= meanage ~ 1, .default = 0)
 }
@@ -155,13 +167,12 @@ base <- basedatos %>%
 ```
 
 
-sexo mujeres en funcion de la edad
-*** en la edad tengo dos niveles arriba y abajo de la media
-
-1. establecemos los niveles para la edad, usamos 2 para los mayore y menores a la media
-
 ```{r}
-edadmenor <-
+reg_logit = glm(genero~ edad+salario+tamano, data=base, family=binomial(link='logit'))
+summary(reg_logit)
+precict_logit=predict(reg_logit, type='response')
+summary(precict_logit)
+estimaciones2 = reg_logit$fitted.values
 ```
 
 

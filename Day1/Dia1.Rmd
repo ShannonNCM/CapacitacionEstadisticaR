@@ -1,0 +1,292 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library("readxl")
+library("tidyverse")
+require("tidyverse")
+library("writexl")
+library("psych")
+
+library("nortest") ###REALIZA 5 PRUEBAS DE NORMALIDAD###
+library("moments") ###REALIZA 1 PRUEBA DE NORMALIDAD###
+
+library("psych")
+```
+
+```{r}
+basedatos <- read_excel("PersonasConNegocios_ENIGH2022.xlsx")
+```
+
+Recodificacion de la variable 'Numero de empleados', se categoriza usando as.factor para poder usarlos mas adelante no como numeros
+
+```{r}
+basedatos <- basedatos %>% mutate(tamano = as.factor(case_when(
+  Numero_Empleados == '1 a 9' ~ 1,
+  Numero_Empleados == '10 a 99' ~ 2,
+    Numero_Empleados == '100 a 199' ~ 3,
+    Numero_Empleados == '+200' ~ 4,
+    TRUE ~ 0
+)))
+```
+
+```{r}
+summary(basedatos$tamano)
+```
+
+```{r}
+table(basedatos$Numero_Empleados)
+```
+
+## 1. Pruebas de normalidad
+
+Tiempo laborando en anios B1P02B06A
+
+```{r}
+basedatos <- basedatos %>% mutate(datos_normales = rnorm(n()))
+#la parte de n() hace que sea basado en el numero de filas haciendo mas dinamico
+```
+
+```{r}
+plot(density(basedatos$datos_normales), lwd=3, col='blue', main='Gráfico de densidad', las=1,
+     xlab='', ylab='Densidad')
+lines(density(basedatos$B1P02B06A), lwd=3, col='red')
+legend('topleft', legend=c('Normal', 'TIEMPO LABORANDO AÑOS'),
+       lwd=3, col=c('blue', 'red'), bty='n')
+```
+
+### 1.1 Graficando en qqplot
+
+A Q-Q plot is a graphical tool used to assess whether a dataset follows a theoretical distribution, often a normal distribution.
+
+```{r}
+qqnorm(basedatos$datos_normales, pch=20,
+       main='QQplot Datos normales')
+qqline(basedatos$datos_normales)
+```
+
+```{r}
+qqnorm(basedatos$B1P02B06A, pch=20,
+       main='QQplot TIEMPO LABORANDO AÑOS')
+qqline(basedatos$B1P02B06A)
+```
+
+### 1.2 Pruebas de Hipotesis
+
+#### 1.2.1 Pruebas de normalidad
+
+-   H0: La muestra proviene de una distribución normal.
+
+-   H1: La muestra no proviene de una distribución normal.
+
+Para pruebas de normalidad siempre se plantean así las hipótesis. Pruebas de Normalidad del Paquete "nortest"
+
+##### 1.2.1.1 Prueba Anderson-Darling
+
+```{r}
+ad.test(basedatos$B1P02B06A)
+ad.test(basedatos$datos_normales)
+```
+
+Caso 1: El valor alto de A sugiere una desviacion significativa de la distribucion normal. El valor p es muy pequeño, lo cual indica que se refuta la hipoteis nula; por lo tanto, La muestra no proviene de una distribución normal
+
+Caso 2: El valor de A es relativamente pequeño, por lo que la muestra es cercana a la distribucion normal. Ya que el valor p es mayor que el nivel de significacia (0.05, 0.01), se acepta la hipotesis nula, por lo que los datos no se desvian significativamente de la distribucion normal.
+
+##### 1.2.1.2 Prueba de Cramer-von Mises
+
+Prueba de Cramer-von MEs útil para pequeñas muestras y usa los momentos como criterio.
+
+```{r}
+cvm.test(basedatos$B1P02B06A)
+cvm.test(basedatos$datos_normales)
+```
+
+Caso 1: El valor de W es grande. El valor p es muy pequeño, por lo que se rechazaria la hipotesis nula.
+
+Caso 2: El valor de W es relativamente pequeño. El valor p es un poco mayor a la significacia de 0.05 pero menor a 0.10. Por lo tanto no se rechaza la hipotesis nula.
+
+##### 1.2.1.3 Prueba de Lilliefors (Kolmogorov-Smirnov)
+
+```{r}
+lillie.test(basedatos$B1P02B06A)
+lillie.test(basedatos$datos_normales)
+```
+
+##### 1.2.1.4 Prueba de Pearson chi-square
+
+Basada en una distribución Ji cuadrado y que corresponde a una prueba de bondad de ajuste.
+
+```{r}
+pearson.test(basedatos$B1P02B06A)
+pearson.test(basedatos$datos_normales)
+```
+
+##### 1.2.1.5 Prueba de Shapiro-Francia
+
+```{r}
+sf.test(basedatos$B1P02B06A[1:5000])
+sf.test(basedatos$datos_normales[1:5000])
+```
+
+##### 1.2.1.6 Pruebas de Normalidad del Paquete "moments" Prueba de Agostino
+
+```{r}
+agostino.test(basedatos$B1P02B06A)
+agostino.test(basedatos$datos_normales)
+```
+
+##### 1.2.1.7 Funciones incluidas en los paquetes básicos de R. Prueba de Shapiro-Wilk
+
+Es más poderosa cuando se compara con otras pruebas de normalidad cuando la muestra es pequeña.
+
+```{r}
+shapiro.test(basedatos$B1P02B06A[1:5000])
+shapiro.test(basedatos$datos_normales[1:5000])
+```
+
+#### 1.2.2 Pruebas de hipotesis para medias univariables
+
+Se puede separar en parametrico y no parametrico
+
+-   H0: mu=a
+
+-   H1: mu distinto de a
+
+-   H0: mu\<a
+
+-   H1: mu\>a
+
+\*\*no es necesario que sea mayor o igual, esto es porque es una dist continua (dijo que venia de la t-student), porque me quedaria solamente un punto y el area bajo la curva del punto es cero.
+
+-   H0: mu\>a
+
+-   H1: mu\<a
+
+\*la conclusion es la misma pero el numero no va a ser el mismo, son tres formas de plantear el problema
+
+pvalor es la probabilidad que H0 sea verdad
+
+##### 1.2.2.1 Paired sample T-test
+
+Este es un procedimiento estadístico que se utiliza para determinar si la diferencia media entre dos conjuntos de observaciones es cero. En una prueba t de muestras pareadas, cada sujeto se mide dos veces, lo que da como resultado pares de observaciones.
+
+```{r}
+# promedio Años trabajando
+mean(basedatos$B1P02B06A)
+```
+
+```{r}
+# promedio  EDAD
+mean(basedatos$B1P00A03)
+```
+
+```{r}
+t.test(basedatos$B1P02B06A, basedatos$B1P00A03, alternative='two.sided',conf.level = 0.95) #H0 ambas medias son iguales
+t.test(basedatos$B1P02B06A, basedatos$B1P00A03, alternative='greater',conf.level = 0.95) #H0 la media de B1P02B06A es menor que la media de B1P00A03
+t.test(basedatos$B1P02B06A, basedatos$B1P00A03, alternative='less',conf.level = 0.95) #H0 la media de B1P02B06A es mayor que la media de B1P00A03
+```
+
+-   t es la t-estadistica de la prueba, mide el tamaño de la diferencia relativa a la variacion de los datos de la muestra. Un valor absoluto grande indica una diferencia significativa entre las medias.
+
+-   df son los grados de libertad, la prueba se ajusta para varianzas distintas y usa distintos grados de libertad a la prueba t regular.
+
+-   p-value, si es menor a 0.05 (o cualquier nivel de significacia escogido) se rechaza la hipotesis nula.
+
+-   H0: las medias de AÑOS y EDAD son iguales (no hay diferencia en las medias)
+
+-   H1: las medias de AÑOS y EDAD son distintas (hay una diferencia en las medias)
+
+##### 1.2.2.2 Paired Samples Wilcoxon Test 
+
+La prueba de Wilcoxon para muestras pareadas es una alternativa no paramétrica a la prueba t pareada utilizada para comparar datos pareados. Se utiliza cuando los datos no se distribuyen normalmente.
+
+```{r}
+wilcox.test(B1P02B06A, B1P00A03, alternative='two.sided',conf.level = 0.99)
+wilcox.test(B1P02B06A, B1P00A03, alternative='greater',conf.level = 0.99)
+wilcox.test(B1P02B06A, B1P00A03, alternative='less',conf.level = 0.99)
+```
+
+\*\*Hay que replicar el no parametrico para las variales que B1P02B24 y B1P02B25
+
+```{r}
+wilcox.test(B1P02B24, B1P02B25, alternative='two.sided',conf.level = 0.99)
+wilcox.test(B1P02B24, B1P02B25, alternative='greater',conf.level = 0.99)
+wilcox.test(B1P02B24, B1P02B25, alternative='less',conf.level = 0.99)
+```
+
+#### 1.2.3 Comparacion de las medias de mas de dos grupos
+
+Existen principalmente dos técnicas que se utilizan para comparar la media de una muestra con una media estándar conocida. Estas dos técnicas son:
+
+Analysis of Variance (ANOVA) \# One way ANOVA \# Two way ANOVA \# MANOVA Test
+
+One way ANOVA El análisis de varianza unidireccional (ANOVA), también conocido como ANOVA de un factor, es una extensión de la prueba t de dos muestras independientes para comparar medias en una situación en la que hay más de dos grupos. En ANOVA unidireccional, los datos se organizan en varios grupos basados en una única variable de agrupación.
+
+Creando variable tamaño de empresa El tamaño de la empresa: para esto puedes construir una variable categórica con las siguientes categorías: \# 0= No sabe \# 1= Micro empresa (1 a 9 trabajadores); \# 2=Pequeña (10 a 99); \# 3=Mediana (100 a 199) \# 4= Grande (+200).
+
+##### 1.2.3.1 ANOVA
+
+anova de B1P02B08: SUELDO O SALARIO MENSUAL con tamano
+
+```{r}
+anova_1 <- aov(basedatos$B1P02B08 ~ factor(basedatos$tamano))
+```
+
+```{r}
+describeBy(basedatos$B1P02B08,basedatos$tamano)
+```
+
+##### 1.2.3.2 Tukey's test
+
+```{r}
+tukey_1 <- TukeyHSD(anova_1)
+#plot(TukeyHSD(anova_1))
+```
+
+```{r}
+plot(tukey_1)
+```
+
+```{r}
+basedatos <- basedatos %>% mutate(trabajos = as.factor(case_when(
+  B1P02B01 == 'UN SOLO TRABAJO' ~ 1,
+  B1P02B01 == 'DOS TRABAJOS' ~ 2,
+  TRUE ~ 3
+)))
+```
+
+```{r}
+anova_2 <- aov(basedatos$B1P02B08 ~ factor(basedatos$trabajos))
+```
+
+```{r}
+describeBy(basedatos$B1P02B08,basedatos$trabajos)
+```
+
+```{r}
+tukey_2 <- TukeyHSD(anova_2)
+```
+
+```{r}
+plot(tukey_2)
+```
+
+##### 1.2.3.3 Two way ANOVA
+
+La prueba ANOVA de dos vías se usa para evaluar simultáneamente el efecto de dos variables de agrupación (A y B) en una variable de respuesta. Toma en consideración dos grupos categóricos.
+
+anova de B1P02B06A: Ingresos por venta de bienes o servicios 2016 con innovacion y tamano juntos
+
+```{r}
+anova_3 <- aov(basedatos$B1P02B06A ~ factor(basedatos$trabajos)*factor(basedatos$tamano))
+```
+
+```{r}
+tukey_3 <- TukeyHSD(anova_3)
+```
+
+```{r}
+plot(tukey_3)
+```
